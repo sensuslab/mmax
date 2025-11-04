@@ -1,0 +1,74 @@
+# ============================================================================
+# SUNA DOCKER COMPOSE - PRODUCTION DEPLOYMENT
+# ============================================================================
+# This Docker Compose file runs Suna services in production using:
+# - Upstash Redis (cloud Redis)
+# - Cloud Supabase (already configured in .env)
+# - Docker containers for Backend, Worker, and Frontend
+#
+# Quick Start:
+#   docker compose -f docker-compose.production.yaml up -d
+#   docker compose -f docker-compose.production.yaml down
+#   docker compose -f docker-compose.production.yaml logs -f
+#
+# Access:
+#   - Suna Frontend:     http://localhost:3000 (or your domain)
+#   - Suna Backend API:  http://localhost:8000 (or your domain)
+# ============================================================================
+
+services:
+  backend:
+    image: ghcr.io/suna-ai/suna-backend:latest
+    platform: linux/amd64
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend/.env:/app/.env:ro
+    environment:
+      # Redis configuration for Upstash
+      - REDIS_HOST=${REDIS_HOST}
+      - REDIS_PORT=${REDIS_PORT}
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+      - REDIS_SSL=${REDIS_SSL}
+      # Note: For Upstash, the actual connection uses UPSTASH_REDIS_REST_URL
+      # and UPSTASH_REDIS_REST_TOKEN from .env
+    depends_on:
+      worker:
+        condition: service_started
+
+  worker:
+    image: ghcr.io/suna-ai/suna-backend:latest
+    platform: linux/amd64
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    command: uv run dramatiq --skip-logging --processes 4 --threads 4 run_agent_background
+    volumes:
+      - ./backend/.env:/app/.env:ro
+    environment:
+      # Redis configuration for Upstash
+      - REDIS_HOST=${REDIS_HOST}
+      - REDIS_PORT=${REDIS_PORT}
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+      - REDIS_SSL=${REDIS_SSL}
+      # Note: For Upstash, the actual connection uses UPSTASH_REDIS_REST_URL
+      # and UPSTASH_REDIS_REST_TOKEN from .env
+    deploy:
+      replicas: 1  # Adjust based on workload
+
+  frontend:
+    init: true
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    environment:
+      # Frontend environment variables are loaded from ./frontend/.env.local
+      # Make sure to create this file or configure via environment
+      - NODE_ENV=production
