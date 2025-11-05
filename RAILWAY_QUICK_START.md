@@ -5,14 +5,22 @@
 - [ ] Repository pushed to GitHub
 - [ ] Required API keys ready (see environment variables below)
 
-## Step 1: Deploy Backend Service
+## ⚠️ IMPORTANT: Choose Your Deployment Approach
+
+Railway offers **two approaches** for monorepo deployments. **Approach 2 is recommended** if Approach 1 fails to detect Dockerfiles.
+
+---
+
+## 🔵 APPROACH 1: Using Root Directory (Simpler, may not work for all setups)
+
+### Step 1: Deploy Backend Service
 
 1. **Create Backend Service**
    - [ ] Go to Railway dashboard
    - [ ] Click "New" → "GitHub Repo"
    - [ ] Select this repository
-   - [ ] **Set Root Directory: `/backend`** ⚠️ IMPORTANT
-   - [ ] Railway will detect `railway.json` and `Dockerfile`
+   - [ ] **Set Root Directory: `/backend`** in Service Settings
+   - [ ] Railway should auto-detect `Dockerfile`
 
 2. **Configure Backend Environment Variables**
 
@@ -31,13 +39,13 @@
    - [ ] Wait for build to complete
    - [ ] Copy the backend public URL (e.g., `https://backend-production-xxxx.railway.app`)
 
-## Step 2: Deploy Frontend Service
+### Step 2: Deploy Frontend Service
 
 1. **Create Frontend Service**
    - [ ] In Railway, click "New" → "GitHub Repo"
    - [ ] Select the SAME repository
-   - [ ] **Set Root Directory: `/frontend`** ⚠️ IMPORTANT
-   - [ ] Railway will detect `railway.json` and `Dockerfile`
+   - [ ] **Set Root Directory: `/frontend`** in Service Settings
+   - [ ] Railway should auto-detect `Dockerfile`
 
 2. **Configure Frontend Environment Variables**
 
@@ -53,18 +61,92 @@
    - [ ] Update `NEXT_PUBLIC_URL` with the actual frontend URL
    - [ ] Trigger redeploy if needed
 
-## Step 3: Verify Deployment
+### Step 3: Verify Deployment
 
 - [ ] Backend health check: `https://your-backend.railway.app/health` (or similar)
 - [ ] Frontend loads: `https://your-frontend.railway.app`
 - [ ] Frontend can connect to backend (check browser console for errors)
 
+---
+
+## 🟢 APPROACH 2: Using RAILWAY_DOCKERFILE_PATH (Recommended for monorepos)
+
+**Use this approach if Railway can't find your Dockerfiles with Approach 1.**
+
+This approach does NOT use Root Directory. Instead, it clones the full repository and uses an environment variable to specify the Dockerfile location.
+
+### Step 1: Deploy Backend Service
+
+1. **Create Backend Service**
+   - [ ] Go to Railway dashboard
+   - [ ] Click "New" → "GitHub Repo"
+   - [ ] Select this repository
+   - [ ] **DO NOT set Root Directory** (leave it empty)
+
+2. **Add Dockerfile Path Variable** ⚠️ CRITICAL
+   - [ ] Go to service Variables tab
+   - [ ] Add: `RAILWAY_DOCKERFILE_PATH=backend/Dockerfile`
+   - [ ] This tells Railway where to find the Dockerfile
+
+3. **Configure Backend Environment Variables**
+
+   Minimum required variables:
+   - [ ] `RAILWAY_DOCKERFILE_PATH=backend/Dockerfile` ⚠️ MUST BE FIRST
+   - [ ] `ENV_MODE=production`
+   - [ ] `SUPABASE_URL`
+   - [ ] `SUPABASE_ANON_KEY`
+   - [ ] `SUPABASE_SERVICE_ROLE_KEY`
+   - [ ] `REDIS_HOST` / `UPSTASH_REDIS_REST_URL`
+   - [ ] At least one LLM API key (`ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, etc.)
+   - [ ] `TAVILY_API_KEY`
+   - [ ] `FIRECRAWL_API_KEY`
+   - [ ] `DAYTONA_API_KEY`
+
+4. **Wait for Backend Deployment**
+   - [ ] Wait for build to complete
+   - [ ] Copy the backend public URL (e.g., `https://backend-production-xxxx.railway.app`)
+
+### Step 2: Deploy Frontend Service
+
+1. **Create Frontend Service**
+   - [ ] In Railway, click "New" → "GitHub Repo"
+   - [ ] Select the SAME repository
+   - [ ] **DO NOT set Root Directory** (leave it empty)
+
+2. **Add Dockerfile Path Variable** ⚠️ CRITICAL
+   - [ ] Go to service Variables tab
+   - [ ] Add: `RAILWAY_DOCKERFILE_PATH=frontend/Dockerfile`
+   - [ ] This tells Railway where to find the Dockerfile
+
+3. **Configure Frontend Environment Variables**
+
+   Required variables:
+   - [ ] `RAILWAY_DOCKERFILE_PATH=frontend/Dockerfile` ⚠️ MUST BE FIRST
+   - [ ] `NEXT_PUBLIC_ENV_MODE=production`
+   - [ ] `NEXT_PUBLIC_BACKEND_URL=<your-backend-url>/api` (use URL from Step 1)
+   - [ ] `NEXT_PUBLIC_URL=<your-frontend-url>` (will get after first deploy)
+   - [ ] `NEXT_PUBLIC_SUPABASE_URL`
+   - [ ] `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+
+4. **Update Frontend URL**
+   - [ ] After first deployment, copy frontend URL
+   - [ ] Update `NEXT_PUBLIC_URL` with the actual frontend URL
+   - [ ] Trigger redeploy if needed
+
+### Step 3: Verify Deployment
+
+- [ ] Backend health check: `https://your-backend.railway.app/health` (or similar)
+- [ ] Frontend loads: `https://your-frontend.railway.app`
+- [ ] Frontend can connect to backend (check browser console for errors)
+
+---
+
 ## Common Issues
 
-### "Dockerfile not found"
-**Solution**: Make sure Root Directory is set correctly:
-- Backend: `/backend`
-- Frontend: `/frontend`
+### "Dockerfile not found" with Approach 1
+**Solution**: Switch to **Approach 2** (using `RAILWAY_DOCKERFILE_PATH`)
+- Don't set Root Directory
+- Add `RAILWAY_DOCKERFILE_PATH` environment variable instead
 
 ### "Frontend can't connect to backend"
 **Solution**:

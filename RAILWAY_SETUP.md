@@ -9,28 +9,58 @@ This repository is configured for Railway deployment with separate frontend and 
 
 ## Deployment Steps
 
-### 1. Create Backend Service
+Railway supports two deployment approaches for monorepos. **Try Approach 1 first; if Railway fails to find Dockerfiles, use Approach 2.**
+
+---
+
+### APPROACH 1: Using Root Directory (Simpler)
+
+#### 1. Create Backend Service
 
 1. In Railway, click **"New"** → **"GitHub Repo"**
 2. Select this repository
-3. **IMPORTANT**: Set **Root Directory** to `/backend`
-4. Railway will automatically detect the `railway.json` and `Dockerfile` in the backend directory
+3. **Set Root Directory** to `/backend` in Service Settings
+4. Railway should automatically detect the `Dockerfile`
 5. Configure environment variables (see Backend Environment Variables below)
 
-### 2. Create Frontend Service
+#### 2. Create Frontend Service
 
 1. Click **"New"** → **"GitHub Repo"** again
 2. Select the same repository
-3. **IMPORTANT**: Set **Root Directory** to `/frontend`
-4. Railway will automatically detect the `railway.json` and `Dockerfile` in the frontend directory
+3. **Set Root Directory** to `/frontend` in Service Settings
+4. Railway should automatically detect the `Dockerfile`
 5. Configure environment variables (see Frontend Environment Variables below)
 
-### 3. Link Services
+---
+
+### APPROACH 2: Using RAILWAY_DOCKERFILE_PATH (More Reliable)
+
+**Use this if Approach 1 fails to detect Dockerfiles.**
+
+#### 1. Create Backend Service
+
+1. In Railway, click **"New"** → **"GitHub Repo"**
+2. Select this repository
+3. **DO NOT set Root Directory** (leave empty)
+4. Go to **Variables** tab and add: `RAILWAY_DOCKERFILE_PATH=backend/Dockerfile`
+5. Configure other environment variables (see Backend Environment Variables below)
+
+#### 2. Create Frontend Service
+
+1. Click **"New"** → **"GitHub Repo"** again
+2. Select the same repository
+3. **DO NOT set Root Directory** (leave empty)
+4. Go to **Variables** tab and add: `RAILWAY_DOCKERFILE_PATH=frontend/Dockerfile`
+5. Configure other environment variables (see Frontend Environment Variables below)
+
+---
+
+### 3. Link Services (Both Approaches)
 
 After both services are deployed, connect them:
 
 1. Copy the backend service's public URL (e.g., `https://your-backend.railway.app`)
-2. Add this URL to the frontend service as `NEXT_PUBLIC_API_URL` environment variable
+2. Add this URL to the frontend service as `NEXT_PUBLIC_BACKEND_URL` environment variable with `/api` path
 3. Redeploy the frontend service
 
 ## Environment Variables
@@ -170,6 +200,17 @@ KORTIX_ADMIN_API_KEY=your-admin-key
 
 ## Configuration Files
 
+### About railway.json Files
+
+This repository includes `railway.json` files in `/backend` and `/frontend` directories. These files are **optional** and primarily used for:
+- Deployment configuration (replicas, restart policy)
+- Build settings (Dockerfile path)
+
+**Important Notes**:
+- **Approach 1 (Root Directory)**: railway.json files provide additional configuration but are not strictly required
+- **Approach 2 (RAILWAY_DOCKERFILE_PATH)**: railway.json files are NOT needed; use environment variables instead
+- If Railway can't detect your Dockerfiles, the railway.json files won't help - use Approach 2 instead
+
 ### Backend Configuration (`/backend/railway.json`)
 
 ```json
@@ -210,11 +251,22 @@ KORTIX_ADMIN_API_KEY=your-admin-key
 
 ### Issue: Railway doesn't detect Dockerfile
 
-**Solution**: Make sure you've set the **Root Directory** correctly:
-- Backend service: `/backend`
-- Frontend service: `/frontend`
+**Root Cause**: Railway's Root Directory feature sometimes fails to detect Dockerfiles in monorepos.
 
-The `dockerfilePath` in `railway.json` is relative to the root directory.
+**Solution 1 - Check Root Directory**:
+- Make sure Root Directory is set exactly: `/backend` or `/frontend`
+- Ensure Dockerfile exists in those directories with capital 'D'
+
+**Solution 2 - Use RAILWAY_DOCKERFILE_PATH (Recommended)**:
+1. Remove Root Directory setting (leave it empty)
+2. Add environment variable: `RAILWAY_DOCKERFILE_PATH=backend/Dockerfile` (or `frontend/Dockerfile`)
+3. Railway will clone the full repo and use the specified Dockerfile
+4. This is more reliable for monorepos
+
+**Why does this happen?**
+- When you set Root Directory, Railway only clones that specific directory
+- Sometimes the Dockerfile detection fails in this limited context
+- Using `RAILWAY_DOCKERFILE_PATH` without Root Directory clones the full repo and explicitly tells Railway where the Dockerfile is located
 
 ### Issue: Frontend can't connect to backend
 
